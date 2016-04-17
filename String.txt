@@ -1,0 +1,224 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+#include<iostream>
+using namespace std;
+//1.浅拷贝
+class String
+{
+public:
+	String(char* str)
+		:_str(str)
+	{}
+
+	String(const String& s)
+		:_str(s._str)
+	{}
+
+	//~String()
+	//{
+	//	delete[] _str;
+	//} 不能释放两次，无论是构造函数还是，拷贝构造都只是把指针指向同一块空间
+private:
+	char* _str;
+
+};
+
+void Test1()
+{
+	String s1("s1");
+	String s2(s1);
+}
+
+int main()
+{
+	Test1();
+	
+	system("pause");
+	return 0;
+}
+
+//深拷贝 -->传统写法-->优点：1.可读性高，符合人的正常思维
+
+class String
+{
+public:
+	/*String()
+		:_str(new char[1])
+	{
+		_str[0] = '\0';
+	}*/
+
+	String(char* str = "")
+		:_str(new char[strlen(str) + 1])
+	{
+		strcpy(_str, str);
+	}
+
+	String(const String& s)
+		:_str(new char[strlen(s._str) + 1])
+	{
+		strcpy(_str, s._str);
+	}
+
+	String& operator=(const String&s) //重载写法1，不完善
+	{
+		if (this != &s)
+		{
+			delete[] _str;
+			_str = new char[strlen(s._str) + 1];
+			strcpy(_str, s._str);
+		}
+		return *this;
+	}
+
+	String& operator=(const String& s)//重载写法2，思路更健全
+	{
+		char* tmp = new char[strlen(s._str) + 1];
+		strcpy(tmp, s._str);
+		delete[] _str;
+		_str = tmp;
+	}
+
+	~String()
+	{
+		/*if (_str)*/
+		delete[] _str;
+	} 
+
+private:
+	char* _str;
+};
+
+void Test1()
+{
+	String s1("s1");
+	//String s3();
+	String s2(s1);
+}
+
+int main()
+{
+	Test1();
+
+	system("pause");
+	return 0;
+}
+
+//深拷贝 --> 现代写法 -->优点：1.简洁 2.new/delete都在统一的地方，可维护性高
+
+class String
+{
+public:
+	String(char* str = "")
+		:_str(new char[strlen(str) + 1])
+	{
+		strcpy(_str, str);
+	}
+
+	String(const String& s)
+		:_str(NULL)
+	{
+		String tmp(s._str);
+		swap(_str, tmp._str);
+	}
+
+	String& operator=(String s)//针对已经存在的两个字符串类型 所以直接交换即可   隐试生成一块临时空间，交换后把可把原来的空间释放掉
+	{
+		swap(_str, s._str);
+		return *this;
+	}
+
+	~String()
+	{
+		/*if (_str)*/
+		delete[] _str;
+	}
+
+private:
+	char* _str;
+};
+
+void Test1()
+{
+	String s1("s1");
+	//String s3();
+	String s2(s1);
+}
+
+int main()
+{
+	Test1();
+
+	system("pause");
+	return 0;
+}
+
+//写时拷贝 -->引用计数器
+//为什么要引入引用计数器：如果对于同一块空间的使用次数多，可以节省时间不停地开辟空间和释放空间
+
+class String
+{
+public:
+	String(char* str = "")
+		:_str(new char[strlen(str) + 1])
+		, _pRefCount(new int(1))
+	{
+		strcpy(_str, str);
+	}
+
+	String(String& s)
+		:_str(s._str)
+		, _pRefCount(s._pRefCount)
+	{
+		++(*_pRefCount);
+	}
+
+	String& operator=(const String& s)
+	{
+		/*char* tmp = new char[strlen(s._str) + 1];
+		strcpy(tmp, s._str);
+		delete[] _str;
+		_str = tmp;*/ //这种写法不符合引用计数器的原理
+		/*swap(_str, s._str);*/
+		if (--(*_pRefCount) == 0)
+		{
+			delete[] _str;
+			delete[] _pRefCount;
+		}
+		_str = s._str;
+		_pRefCount = s._pRefCount;
+		++(*_pRefCount);
+		return *this;
+	}
+
+	~String()
+	{
+		if (--(*_pRefCount) == 0)
+		{
+			delete[] _str;
+			delete[] _pRefCount;
+		}
+	}
+
+private:
+	char* _str;
+	/*static int _refCount;*///变成静态的以后，需要在类的外面定义
+	int* _pRefCount;
+};
+
+//int String::_refCount = 0;
+
+void Test1()
+{
+	String s1("xxx");
+	String s2(s1);
+	String s3("yyy");
+	s3 = s2;
+	/*String s4(s3);*/
+}
+
+int main()
+{
+	Test1();
+	system("pause");
+	return 0;
+}
